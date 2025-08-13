@@ -5,6 +5,8 @@ import { Client, WebhookEvent, MessageEvent } from '@line/bot-sdk';
 import { ChatMessage, ChatMessageDocument } from '../chat/schemas/chat-message.schema';
 import { ChatAccount, ChatAccountDocument } from '../chat/schemas/chat-account.schema';
 import { ChatGateway } from '../chat/chat.gateway';
+import { firstValueFrom } from 'rxjs';
+import { HttpService } from '@nestjs/axios';
 
 @Injectable()
 export class LineService {
@@ -14,6 +16,7 @@ export class LineService {
     @InjectModel(ChatMessage.name) private chatMessageModel: Model<ChatMessageDocument>,
     @InjectModel(ChatAccount.name) private chatAccountModel: Model<ChatAccountDocument>,
     private readonly chatGateway: ChatGateway,
+    private readonly HttpService: HttpService
   ) { }
   
   async handleWebhook(body: any): Promise<void> {
@@ -329,5 +332,161 @@ export class LineService {
     );
 
     return enrichedList;
+  }
+
+    async getLineIntegrationStatus(token: string): Promise<Object> {
+    try {
+      const res = await firstValueFrom(
+        this.HttpService.get('https://api.line.me/v2/bot/info', {
+          headers: {
+            Authorization: `${token}`
+          }
+        })
+      )
+      const data = res.data
+      const response = {
+        "status": "active",
+        "isWorking": true,
+        "config": {
+          "lineChannelId": data.userId,
+          "webhookUrl": `https://api.curedent.com/webhooks/line/${data.userId}`,
+          "createdAt": new Date().toISOString(),
+          "messageCount": 150
+        }
+      }
+      return response
+
+    } catch (error) {
+      return {
+        "data": {
+          "status": "not_connected",
+          "setupRequired": true
+        }
+      }
+    }
+  }
+
+  async previewWebHook(body): Promise<object> {
+    try {
+      // await firstValueFrom(this.httpService.get('https://api.line.me/v2/bot/info', {
+      //   headers: {
+      //     Authorization: `Bearer ${body.lineChannelAccessToken}`,
+      //   },
+      // }),
+      // );
+
+      //do something on mongo wait p'ter adjust flow
+      const sessionId = `preview_session_${Math.floor(Math.random() * 1000000)}`;
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+      const response = {
+        webhookUrl: `https://api.curedent.com/webhooks/line/${body.lineChannelId}`,
+        status: "preview",
+        sessionId: sessionId,
+        expiresAt: expiresAt,
+        instructions: {
+          steps: [
+            '1. Copy the webhook URL below',
+            '2. Open LINE Developers Console',
+            '3. Navigate to Messaging API → Webhook settings',
+            '4. Paste webhook URL and enable',
+            '5. Return and click Save Configuration',
+          ],
+        }
+      }
+      return response
+    } catch (error) {
+      return {
+        success: false,
+        error: {
+          code: "INVALID_LINE_CREDENTIALS",
+          message: "Invalid LINE credentials provided",
+          details: "The channel access token is invalid or expired"
+        }
+      }
+    }
+  }
+
+  async saveIntegration(body): Promise<object> {
+    try {
+      const channelId = body.lineChannelId
+      const chatAccount = await this.chatAccountModel
+        .findOne({ platform: 'line', channelId })
+        .exec();
+
+      if (!chatAccount) {
+        const insert = {
+          userId: body.lineChannelId,
+          channelId: body.lineChannelId,
+          secret: body.lineChannelSecret,
+          platform: "line",
+          accessToken: body.lineChannelAccessToken,
+          webhookUrl: "test",
+          status: "test",
+          createdAt: new Date().toISOString()
+        }
+
+        const create = new this.chatAccountModel({ ...insert })
+        console.log('created', create)
+        await create.save()
+      }
+      const response = {
+        integrationId: "xxxx",
+        status: "active",
+        webhookUrl: `https://api.curedent.com/webhooks/line/${body.lineChannelId}`,
+      }
+      return response
+    } catch (error) {
+      console.log('error', error)
+      return {
+        success: false,
+        error: {
+          code: "INVALID_LINE_CREDENTIALS",
+          message: "Invalid LINE credentials provided",
+          details: "The channel access token is invalid or expired"
+        }
+      }
+    }
+  }
+
+  //
+  async updatedIntegration(body): Promise<object> {
+    try {
+
+      const updated = this.chatAccountModel.updateOne({ clinicId: body.clinicId })
+      const response = {
+        "integrationId": "integration_456",
+        "status": "active",
+        "updatedAt": "2024-01-15T11:00:00.000Z"
+      }
+
+      return response
+    } catch (error) {
+      return {
+        success: false,
+        error: {
+
+        }
+      }
+    }
+  }
+
+  async deleteInteration(param): Promise<object> {
+    try {
+
+      const updated = this.chatAccountModel.deleteOne({ clinicId: param })
+      const response = {
+        success: true,
+        //do something soft delete
+      }
+
+      return response
+    } catch (error) {
+      return {
+        success: false,
+        error: {
+
+        }
+      }
+    }
   }
 }

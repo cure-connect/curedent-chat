@@ -1,0 +1,34 @@
+import { Model } from 'mongoose';
+import { ChatMessage, ChatMessageDocument } from '../chat/schemas/chat-message.schema';
+import { ChatAccount, ChatAccountDocument } from '../chat/schemas/chat-account.schema';
+import { ChatContactDocument } from '../chat/schemas/chat-contact.schema';
+import { ChatGateway } from '../chat/chat.gateway';
+export declare class MetaService {
+    private chatMessageModel;
+    private chatAccountModel;
+    private chatContactModel;
+    private readonly chatGateway;
+    private readonly logger;
+    private readonly META_API_VERSION;
+    private readonly DEFAULT_PAGE_ACCESS_TOKEN;
+    constructor(chatMessageModel: Model<ChatMessageDocument>, chatAccountModel: Model<ChatAccountDocument>, chatContactModel: Model<ChatContactDocument>, chatGateway: ChatGateway);
+    validateSignature(payload: string, appSecret: string, signature: string): Promise<boolean>;
+    sendTextMessage(senderId: string, text: string): Promise<void>;
+    handleWebhook(body: any, chatAccount: ChatAccount): Promise<void>;
+    handleMessageEvent(event: any, chatAccountId: string, platform: string): Promise<void>;
+    handlePostbackEvent(event: any, chatAccountId: string, platform: string): Promise<void>;
+    handleReactionEvent(event: any, chatAccountId: string, platform: string): Promise<void>;
+    handleReadEvent(event: any, chatAccountId: string, platform: string): Promise<void>;
+    updateContactInfo(chatAccountId: string, senderId: string, platform: string): Promise<void>;
+    pushMessage(userId: string, text: string, chatAccountId: string, platform?: 'facebook' | 'instagram'): Promise<any>;
+    sendTemplateMessage(userId: string, template: any, chatAccountId: string, platform?: 'facebook' | 'instagram'): Promise<any>;
+    sendFile(userId: string, file: Express.Multer.File, chatAccountId: string, platform?: 'facebook' | 'instagram', caption?: string): Promise<any>;
+    saveMessage(data: Partial<ChatMessage>): Promise<ChatMessage>;
+    getUserMessageHistory(chatAccountId: string, userId: string, limit?: number, before?: string, after?: string): Promise<ChatMessage[]>;
+    getUserProfile(userId: string, chatAccountId: string, platform: 'facebook' | 'instagram'): Promise<any>;
+    getChatList(chatAccountId: string, platform?: 'facebook' | 'instagram', limit?: number): Promise<any[]>;
+    private getMessageTypeFromAttachment;
+    private getAttachmentLabel;
+    private getTemplateDescription;
+    private isValidObjectId;
+}

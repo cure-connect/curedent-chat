@@ -10,6 +10,9 @@ import {
   HttpStatus,
   UseInterceptors,
   UploadedFile,
+  UseGuards,
+  Put,
+  Delete,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -17,6 +20,10 @@ import { extname } from 'path';
 import { LineService } from './line.service';
 import * as line from '@line/bot-sdk';
 import { ChatAccountService } from '../chat/chat-account.service';
+import { LineIntegrationDto } from './dto/previewwebhook.dto';
+import { JwtAuthGuard } from 'src/middleware/auth';
+import { SaveIntegrationDto } from './dto/saveintegration.dto';
+import { UpdateIntegrationDto } from './dto/updatedintegration.dto';
 
 @Controller('line')
 export class LineController {
@@ -117,4 +124,63 @@ export class LineController {
     await this.lineService.sendFile(userId, file, chatAccountId);
     return { success: true };
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('integrations/line')
+  async getLineIntegrationStatus(
+    @Headers('Authorization') token: string) {
+    const result = await this.lineService.getLineIntegrationStatus(token);
+    return {
+      success: true,
+      data: result,
+    };
+  }
+
+  @Post('integrations/line/preview')
+  async previewWebHookService(
+    @Body() body: LineIntegrationDto
+  ): Promise<object> {
+    const result = await this.lineService.previewWebHook(body);
+    return {
+      success: true,
+      data: result,
+    };
+  }
+
+  @Post('integrations/line')
+  async saveIntegrationsService(
+    @Body() body: SaveIntegrationDto
+  ): Promise<object> {
+    const result = await this.lineService.saveIntegration(body);
+    return {
+      success: true,
+      data: result,
+      message: "LINE OA integration saved successfully"
+    }
+  }
+
+  @Put('integrations/line')
+  async updateIntegrationsService(
+    @Body() body: UpdateIntegrationDto
+  ): Promise<object> {
+    const result = await this.lineService.updatedIntegration(body)
+    return {
+      success: true,
+      data: result,
+      message: "Integration updated successfully"
+    }
+  }
+
+  @Delete('integrations/line')
+  async deleteIntegrationsService(
+    @Param() param: any
+  ): Promise<object> {
+    const result = await this.lineService.deleteInteration(param)
+    return {
+      success: true,
+      data: result,
+      message: "Integration removed successfully"
+    }
+  }
+
 }
